@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package stock;
+
+service StockService {
+  rpc GetStockPrice (StockRequest) returns (StockResponse) {}
+}
+
+message StockRequest {
+  string symbol = 1;
+}
+
+message StockResponse {
+  string symbol = 1;
+  double price = 2;
+}
