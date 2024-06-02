@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package alert;
+
+service AlertService {
+  rpc CheckStockAlert (CheckAlertRequest) returns (CheckAlertResponse) {}
+}
+
+message CheckAlertRequest {
+  string symbol = 1;
+  double threshold = 2;
+}
+
+message CheckAlertResponse {
+  string symbol = 1;
+  bool alert = 2;
+  string message = 3;
+}

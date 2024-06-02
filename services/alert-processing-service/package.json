@@ -1,0 +1,37 @@
+{
+  "name": "alert-processing-service",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "start-client": "ts-node src/client.ts",
+    "start": "ts-node src/server.ts",
+    "test": "jest --detectOpenHandles --forceExit",
+    "gen:proto": "grpc_tools_node_protoc --js_out=import_style=commonjs,binary:./stub --grpc_out=grpc_js:./stub --plugin=protoc-gen-grpc=./node_modules/.bin/grpc_tools_node_protoc_plugin --ts_out=grpc_js:./stub -I=../../proto ../../proto/*.proto"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@grpc/grpc-js": "^1.10.8",
+    "@grpc/proto-loader": "^0.7.13",
+    "@types/node": "^20.13.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  },
+  "devDependencies": {
+    "@grpc/grpc-js": "^1.10.8",
+    "@grpc/proto-loader": "^0.7.13",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.13.0",
+    "google-protobuf": "^3.21.2",
+    "grpc_tools_node_protoc_ts": "^5.3.3",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.4",
+    "typescript": "^5.4.5",
+    "grpc-tools": "^1.12.4"
+  }
+}
