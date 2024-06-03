@@ -1,5 +1,5 @@
 import * as grpc from "@grpc/grpc-js";
-import * as http from "http";
+import http from "http";
 import * as promClient from "prom-client";
 import {
   IStockServiceServer,
@@ -67,22 +67,20 @@ server.bindAsync(port, grpc.ServerCredentials.createInsecure(), (err, port) => {
     return;
   }
   console.log(`Stock Data Service running at ${port}`);
+  server.start();
 });
 
 // Expose metrics endpoint
-const metricsPort = 8080;
-http
-  .createServer(async (req, res) => {
-    if (req.url === "/metrics") {
-      res.setHeader("Content-Type", register.contentType);
-      res.end(await register.metrics());
-    } else {
-      res.writeHead(404, { "Content-Type": "text/plain" });
-      res.end("Not Found");
-    }
-  })
-  .listen(metricsPort, () => {
-    console.log(
-      `Metrics server running at http://localhost:${metricsPort}/metrics`
-    );
-  });
+const metricsServer = http.createServer(async (req, res) => {
+  if (req.url === "/metrics") {
+    res.setHeader("Content-Type", register.contentType);
+    res.end(await register.metrics());
+  } else {
+    res.statusCode = 404;
+    res.end();
+  }
+});
+
+metricsServer.listen(8080, () => {
+  console.log("Metrics server running at http://localhost:8080/metrics");
+});
