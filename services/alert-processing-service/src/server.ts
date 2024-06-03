@@ -4,13 +4,34 @@ import {
   IAlertServiceServer,
 } from "../stub/alert_grpc_pb";
 import { CheckAlertResponse } from "../stub/alert_pb";
+import { NotificationServiceClient } from "../stub/notification_grpc_pb";
+import { SendNotificationRequest } from "../stub/notification_pb";
 import { StockServiceClient } from "../stub/stock_grpc_pb";
 import { StockRequest } from "../stub/stock_pb";
+import * as promClient from "prom-client";
+import * as http from "http";
 
 const stockClient = new StockServiceClient(
-  "stock-data-service:50051", // Use the container name here
+  "stock-data-service:50051",
   grpc.credentials.createInsecure()
 );
+
+const notificationClient = new NotificationServiceClient(
+  "notification-service:50053",
+  grpc.credentials.createInsecure()
+);
+
+// Prometheus metrics
+const register = new promClient.Registry();
+promClient.collectDefaultMetrics({ register });
+
+const requestCounter = new promClient.Counter({
+  name: "alert_processing_service_requests_total",
+  help: "Total number of requests to the Alert Processing Service",
+  labelNames: ["method"],
+});
+
+register.registerMetric(requestCounter);
 
 const checkStockAlert: IAlertServiceServer["checkStockAlert"] = (
   call,
@@ -46,7 +67,29 @@ const checkStockAlert: IAlertServiceServer["checkStockAlert"] = (
     );
 
     console.log(`Sending alert response: ${alertResponse.toObject()}`);
-    callback(null, alertResponse);
+    requestCounter.inc({ method: "checkStockAlert" });
+
+    if (alert) {
+      const notificationRequest = new SendNotificationRequest();
+      notificationRequest.setMessage(`Price of ${symbol} is above threshold`);
+      notificationClient.sendNotification(
+        notificationRequest,
+        (notifError, notifResponse) => {
+          if (notifError) {
+            console.error(`Error sending notification: ${notifError.message}`);
+            callback(notifError, null);
+            return;
+          }
+
+          console.log(
+            `Notification sent successfully: ${notifResponse.getSuccess()}`
+          );
+          callback(null, alertResponse);
+        }
+      );
+    } else {
+      callback(null, alertResponse);
+    }
   });
 };
 
@@ -60,5 +103,22 @@ server.bindAsync(port, grpc.ServerCredentials.createInsecure(), (err, port) => {
     return;
   }
   console.log(`Alert Processing Service running at ${port}`);
-  server.start();
 });
+
+// Expose metrics endpoint
+const metricsPort = 8081;
+http
+  .createServer(async (req, res) => {
+    if (req.url === "/metrics") {
+      res.setHeader("Content-Type", register.contentType);
+      res.end(await register.metrics());
+    } else {
+      res.writeHead(404, { "Content-Type": "text/plain" });
+      res.end("Not Found");
+    }
+  })
+  .listen(metricsPort, () => {
+    console.log(
+      `Metrics server running at http://localhost:${metricsPort}/metrics`
+    );
+  });
