@@ -1,12 +1,12 @@
 {
-  "name": "alert-processing-service",
+  "name": "notification-service",
   "version": "1.0.0",
+  "description": "",
   "main": "index.js",
   "directories": {
     "test": "test"
   },
   "scripts": {
-    "start-client": "ts-node src/client.ts",
     "start": "ts-node src/server.ts",
     "test": "jest --detectOpenHandles --forceExit",
     "gen:proto": "grpc_tools_node_protoc --js_out=import_style=commonjs,binary:./stub --grpc_out=grpc_js:./stub --plugin=protoc-gen-grpc=./node_modules/.bin/grpc_tools_node_protoc_plugin --ts_out=grpc_js:./stub -I=../../proto ../../proto/*.proto"

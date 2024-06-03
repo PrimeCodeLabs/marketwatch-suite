@@ -1,9 +1,11 @@
 import * as grpc from "@grpc/grpc-js";
+import * as http from "http";
+import * as promClient from "prom-client";
 import {
-  StockServiceService,
   IStockServiceServer,
+  StockServiceService,
 } from "../stub/stock_grpc_pb";
-import { StockRequest, StockResponse } from "../stub/stock_pb";
+import { StockResponse } from "../stub/stock_pb";
 
 // Predefined dataset with stock symbols and initial prices
 const stockData: { [symbol: string]: number } = {
@@ -26,6 +28,18 @@ const simulatePriceChanges = () => {
 // Update prices every 5 seconds
 setInterval(simulatePriceChanges, 5000);
 
+// Prometheus metrics
+const register = new promClient.Registry();
+promClient.collectDefaultMetrics({ register });
+
+const requestCounter = new promClient.Counter({
+  name: "stock_data_service_requests_total",
+  help: "Total number of requests to the Stock Data Service",
+  labelNames: ["method"],
+});
+
+register.registerMetric(requestCounter);
+
 const getStockPrice: IStockServiceServer["getStockPrice"] = (
   call,
   callback
@@ -39,6 +53,7 @@ const getStockPrice: IStockServiceServer["getStockPrice"] = (
   response.setPrice(price);
 
   console.log(`Sending response with price: ${price}`);
+  requestCounter.inc({ method: "getStockPrice" });
   callback(null, response);
 };
 
@@ -52,5 +67,22 @@ server.bindAsync(port, grpc.ServerCredentials.createInsecure(), (err, port) => {
     return;
   }
   console.log(`Stock Data Service running at ${port}`);
-  server.start();
 });
+
+// Expose metrics endpoint
+const metricsPort = 8080;
+http
+  .createServer(async (req, res) => {
+    if (req.url === "/metrics") {
+      res.setHeader("Content-Type", register.contentType);
+      res.end(await register.metrics());
+    } else {
+      res.writeHead(404, { "Content-Type": "text/plain" });
+      res.end("Not Found");
+    }
+  })
+  .listen(metricsPort, () => {
+    console.log(
+      `Metrics server running at http://localhost:${metricsPort}/metrics`
+    );
+  });
