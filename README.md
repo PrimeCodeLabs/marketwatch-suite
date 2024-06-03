@@ -2,6 +2,8 @@
 
 ## Introduction
 
+![Diagram](docs/diagram.png)
+
 The **MarketWatch Suite** is a microservices-based application designed to demonstrate and explore the capabilities of gRPC for interservice communication. This project includes three main services:
 
 - **Stock Data Service**: Manages and provides stock market data.
