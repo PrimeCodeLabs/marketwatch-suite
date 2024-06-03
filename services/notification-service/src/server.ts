@@ -1,15 +1,14 @@
 import * as grpc from "@grpc/grpc-js";
-import * as http from "http";
-import * as promClient from "prom-client";
 import {
-  INotificationServiceServer,
   NotificationServiceService,
+  INotificationServiceServer,
 } from "../stub/notification_grpc_pb";
-import { SendNotificationResponse } from "../stub/notification_pb";
-
-// Prometheus metrics
-const register = new promClient.Registry();
-promClient.collectDefaultMetrics({ register });
+import {
+  SendNotificationRequest,
+  SendNotificationResponse,
+} from "../stub/notification_pb";
+import * as promClient from "prom-client";
+import http from "http";
 
 const requestCounter = new promClient.Counter({
   name: "notification_service_requests_total",
@@ -17,6 +16,8 @@ const requestCounter = new promClient.Counter({
   labelNames: ["method"],
 });
 
+const register = new promClient.Registry();
+promClient.collectDefaultMetrics({ register });
 register.registerMetric(requestCounter);
 
 const sendNotification: INotificationServiceServer["sendNotification"] = (
@@ -36,7 +37,6 @@ const sendNotification: INotificationServiceServer["sendNotification"] = (
   callback(null, response);
 };
 
-// Create the gRPC server
 const server = new grpc.Server();
 server.addService(NotificationServiceService, { sendNotification });
 
@@ -47,22 +47,20 @@ server.bindAsync(port, grpc.ServerCredentials.createInsecure(), (err, port) => {
     return;
   }
   console.log(`Notification Service running at ${port}`);
+  server.start();
 });
 
 // Expose metrics endpoint
-const metricsPort = 8082;
-http
-  .createServer(async (req, res) => {
-    if (req.url === "/metrics") {
-      res.setHeader("Content-Type", register.contentType);
-      res.end(await register.metrics());
-    } else {
-      res.writeHead(404, { "Content-Type": "text/plain" });
-      res.end("Not Found");
-    }
-  })
-  .listen(metricsPort, () => {
-    console.log(
-      `Metrics server running at http://localhost:${metricsPort}/metrics`
-    );
-  });
+const metricsServer = http.createServer(async (req, res) => {
+  if (req.url === "/metrics") {
+    res.setHeader("Content-Type", register.contentType);
+    res.end(await register.metrics());
+  } else {
+    res.statusCode = 404;
+    res.end();
+  }
+});
+
+metricsServer.listen(8082, () => {
+  console.log("Metrics server running at http://localhost:8082/metrics");
+});
